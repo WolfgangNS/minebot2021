@@ -20,54 +20,68 @@ namespace minebot2021
         }
         static async Task MainAsync()
         {
-            minebot.Connect("127.0.0.1");
-            //return;
+            var m = new minebot();
+            //m.Connect("127.0.0.1").Wait();
+
+            m.setblock(64, 47, 64);
+            m.chat("hello, I am dickbot");
+            m.move(0, 0, 0, 0, 0);
+            m.move(64, 47, 64, 0, 0);
+
+            Thread movingthread = new Thread(m.movearound);
+            movingthread.Start();
+
+            Task<bool> ec = m.enablechat();
+            
+            // Task<bool> moving = m.movearound();
+            // moving.Wait();
+
+            //m.move(64, 50, 64, 0, 0);
         }
 
     }
     class minebot
     {
         static NetworkStream stream;
-        public static async void Connect(String serverip)
+        public minebot()
         {
             try
             {
+                String serverip = "127.0.0.1";
                 Int32 port = 25565;
                 TcpClient client = new TcpClient(serverip, port);
-                NetworkStream stream = client.GetStream();
-                
+                stream = client.GetStream();
+                //NetworkStream stream = client.GetStream();
 
                 handshake(ref stream);
-                var reader = readstream();
-                setblock(ref stream, 64, 47, 64);
-                chat(ref stream, "hello, I am dickbot");
-                move(ref stream, 0, 0, 0, 0, 0);
-                
-                while(true)
-                {
-                   var msg = Console.ReadLine();
-                   chat(ref stream, msg);
-                   //Console.WriteLine(msg);
-                }
+            }
+            catch
+            {
 
+            }
+                // while(true)
+                // {
+                //    var msg = Console.ReadLine();
+                //    chat(ref stream, msg);
+                //    //Console.WriteLine(msg);
+                // }
 
                 //Thread.Sleep(2000);
                 //Task.Delay(1000);
                 //stream.Close();
                 //client.Close();
-            }
-            catch (ArgumentNullException e)
-            {
-                Console.WriteLine("ArgumentNullException: {0}", e);
-            }
-            catch (SocketException e)
-            {
-                Console.WriteLine("SocketException: {0}", e);
-            }
 
-            //Console.WriteLine("\n Press Enter to continue...");
         }
-        static async Task<string> readstream()
+        public async Task<bool> enablechat()
+        {
+            while(true)
+                {
+                   var msg = Console.ReadLine();
+                   chat(msg);
+                   //Console.WriteLine(msg);
+                }
+        }
+        public async Task<string> readstream()
         {
             using var reader = new StreamReader(stream);
             stream.ReadTimeout = 2*1000;
@@ -76,11 +90,35 @@ namespace minebot2021
             while(true)
             {
                 string response = await reader.ReadToEndAsync();
+                //string response = await reader.ReadBlock();
                 Console.WriteLine(response);
             }
             return "yes";
         }
-        static void handshake(ref NetworkStream stream)
+        public void movearound()
+        {
+            //move in an infinity symbol
+            double t = 0;
+            int i = 0;
+            while(true)
+            {
+            // Thread.Sleep(500);
+            // move(64,48,64,0,0);
+            // Thread.Sleep(500);
+            // move(64,47,64,0,0);
+            if(t>=2*Math.PI){t=0;i=0;}
+            double x1 = Math.Sin(t)*20+64;
+            double y1 = Math.Sin(t)*Math.Cos(t)*20+64;
+            move((short)x1,48,(short)y1,0,0);
+            if(i%8==0)
+            {
+            //setblock((short)x1,48,(short)y1);
+            }
+            Thread.Sleep(1);
+            t+=Math.PI/(64);
+            }
+        }
+        public void handshake(ref NetworkStream stream)
         {
                 var bytelist = new List<byte>();
                 bytelist.Add(0x00);
@@ -106,7 +144,7 @@ namespace minebot2021
                 responseData = System.Text.Encoding.ASCII.GetString(data, 0, bytes);
                 Console.WriteLine("Received: {0}", responseData);
         }
-        static void setblock(ref NetworkStream stream, short x, short y, short z)
+        public void setblock(short x, short y, short z)
         {
                 var bytelist = new List<byte>();
                 bytelist = new List<byte>();
@@ -118,11 +156,11 @@ namespace minebot2021
                 bytelist.Add((byte)(z>>8));
                 bytelist.Add((byte)z);
                 bytelist.Add(0x01); //build block
-                bytelist.Add(0x20); //stone
+                bytelist.Add((byte)20); //glass
                 var data = bytelist.ToArray();
                 stream.Write(data, 0, data.Length);
         }
-        static void chat(ref NetworkStream stream, string chat)
+        public void chat(string chat)
         {
                 var bytelist = new List<byte>();
                 bytelist = new List<byte>();
@@ -137,7 +175,7 @@ namespace minebot2021
                 var data = bytelist.ToArray();
                 stream.Write(data, 0, data.Length);
         }
-        static void move(ref NetworkStream stream, short x, short y, short z, UInt16 pitch, UInt16 yaw)
+        public void move(short x, short y, short z, UInt16 pitch, UInt16 yaw)
         {
                 //position/orientation update
                 var bytelist = new List<byte>();
