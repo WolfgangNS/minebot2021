@@ -13,35 +13,72 @@ namespace minebot2021
     {
         static void Main(string[] args)
         {
-            
-            //Console.WriteLine("Hello World!");
-            //minebot newbot = new minebot();
+            //do I need this for taskless methods?
             MainAsync().Wait();
         }
         static async Task MainAsync()
         {
             var m = new minebot();
-            //m.Connect("127.0.0.1").Wait();
 
             m.setblock(64, 47, 64);
             m.chat("hello, I am dickbot");
+            m.chat("/goto small");
             m.move(0, 0, 0, 0, 0);
             m.move(64, 47, 64, 0, 0);
 
             Thread movingthread = new Thread(m.movearound);
             movingthread.Start();
 
-            Task<bool> ec = m.enablechat();
-            
-            // Task<bool> moving = m.movearound();
-            // moving.Wait();
+            Console.WriteLine("test");
 
-            //m.move(64, 50, 64, 0, 0);
+            Thread writethread = new Thread(m.writechat);
+            writethread.Start();
+            
+            Thread readthread = new Thread(m.readchat);
+            readthread.Start();
+
         }
 
     }
     class minebot
     {
+        Dictionary<byte,string> dict = new Dictionary<byte, string>
+        {
+        [0x00] = "Server Identification",
+        [0x01] = "Ping",
+        [0x02] = "Level Initialize",
+        [0x03] = "Level Data Chunk",
+        [0x04] = "Level Finalize",
+        [0x06] = "Set Block",
+        [0x07] = "Spawn Player",
+        [0x08] = "Position and Orientation (Player Teleport)",
+        [0x09] = "Position and Orientation Update",
+        [0x0a] = "Position Update",
+        [0x0b] = "Orientation Update",
+        [0x0c] = "Despawn Player",
+        [0x0d] = "Message",
+        [0x0e] = "Disconnect player",
+        [0x0f] = "Update user type",
+        };
+        Dictionary<byte, int> packetlength = new Dictionary<byte, int>
+        {
+            [0x00] = 131,
+            [0x01] = 1,
+            [0x02] = 1,
+            [0x03] = 1028,
+            [0x04] = 7,
+            [0x06] = 8,
+            [0x07] = 74,
+            [0x08] = 10,
+            [0x09] = 7,
+            [0x0a] = 5,
+            [0x0b] = 4,
+            [0x0c] = 2,
+            [0x0d] = 66,
+            [0x0e] = 65,
+            [0x0f] = 2
+        };
+        static TcpClient client;
         static NetworkStream stream;
         public minebot()
         {
@@ -49,7 +86,7 @@ namespace minebot2021
             {
                 String serverip = "127.0.0.1";
                 Int32 port = 25565;
-                TcpClient client = new TcpClient(serverip, port);
+                client = new TcpClient(serverip, port);
                 stream = client.GetStream();
                 //NetworkStream stream = client.GetStream();
 
@@ -59,29 +96,45 @@ namespace minebot2021
             {
 
             }
-                // while(true)
-                // {
-                //    var msg = Console.ReadLine();
-                //    chat(ref stream, msg);
-                //    //Console.WriteLine(msg);
-                // }
-
                 //Thread.Sleep(2000);
                 //Task.Delay(1000);
                 //stream.Close();
                 //client.Close();
-
         }
-        public async Task<bool> enablechat()
+        public void writechat() //async Task<bool> enablechat()
         {
             while(true)
                 {
                    var msg = Console.ReadLine();
                    chat(msg);
+                //    Thread.Sleep(100);
                    //Console.WriteLine(msg);
                 }
         }
-        public async Task<string> readstream()
+        public void readchat()
+        {
+            //insert await for client stream?
+
+            //headerbyte
+            //packetid
+            StreamReader sr = new StreamReader(client.GetStream());
+            string data;
+            while ((data = sr.ReadLine()) != null)
+            {
+                try
+                {
+                var packettype = BitConverter.GetBytes(data[0])[0];
+                var identifier = dict[packettype];
+                Console.WriteLine("packet received: " + identifier + ", " + data);
+                }
+                catch
+                {
+
+                }
+            }
+
+        }
+/*         public async Task<string> readstream()
         {
             using var reader = new StreamReader(stream);
             stream.ReadTimeout = 2*1000;
@@ -94,7 +147,7 @@ namespace minebot2021
                 Console.WriteLine(response);
             }
             return "yes";
-        }
+        } */
         public void movearound()
         {
             //move in an infinity symbol
